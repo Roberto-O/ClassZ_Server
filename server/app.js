@@ -20,7 +20,7 @@ var dict = {};
 var gameCollection =  new function() {
     this.totalGameCount = 0,
     this.gameList = {}
-};
+    };
 
 io.on('connection', (socket) => {
     class MyEmitter extends EventEmitter {}
@@ -42,7 +42,7 @@ io.on('connection', (socket) => {
         })();
     });
 
-    socket.on('join', function(data) {
+    socket.on('set name', function(data) {
         var id = data.userID;
         var username = data.uname;
 
@@ -53,60 +53,95 @@ io.on('connection', (socket) => {
             }
         }
 
-        console.log(username + " has joined");
+        console.log("Set id " + id + " to " + username);
     });
 
-    socket.on('join game', function (data) {
-        //var gameId = data.gameCode;
+    socket.on('does game exist', function (gameId) {
+        var gameExists = false;
 
         //check gameCollection if gameID exists, if not emit saying so
         for(var key in gameCollection){
-            var gameExists = false;
-            var obj = gameCollection[key];
+                var obj = gameCollection[key];
 
-            if(key == "gameList"){
-                for(var prop in obj) {
+                if(key == "gameList"){
+                    for(var key2 in obj) { //loops through lobbies
+                        var lobby = obj[key2];
 
-                    if(data == obj[prop]){
-                        console.log("Joined game lobby " + data);
-                        gameExists = true;
+                        for(var key3 in lobby){ //loops through the lobby variables
+                            if(key3 == "gameCode"){
+                                if(lobby[key3] == gameId){
+                                    gameExists = true;
+                                    console.log("game " + gameId + " exists");
+                                }
+                            }
+                        }
                     }
                 }
 
-                if(!gameExists){
-                    console.log(data + " does not exist.");
-                    socket.emit('game exists', "false");
-                }
-            }
+        }//end for
 
+        if(!gameExists){
+            console.log(gameId + " does not exist.");
+            socket.emit('game exists', 'false');
+        }else{
+            socket.emit('game exists', 'true');
         }
-
     });
 
+    socket.on('join game', function (data) {
+        var gameId = data.gameID;
+        var userId = data.userID;
+        var username = dict[userId];
+
+        for(var key in gameCollection.gameList){
+            if(key == "lobbyInfo"){
+                for(var infoVar in gameCollection.gameList.lobbyInfo){ //loop through the lobby's parameters
+                    if(infoVar == "gameCode"){
+                        var newData = gameCollection.gameList.lobbyInfo.gameCode;
+                        if(newData == gameId){ //compare current gameCode with gameCode sent from client
+                            continue;
+                        }else{
+                            break;
+                        }
+                    }
+                    if(infoVar == "players"){
+                        gameCollection.gameList.lobbyInfo.players.push([username]);
+                        for(var players in gameCollection.gameList.lobbyInfo.players){
+                            console.log("players in game: " + gameCollection.gameList.lobbyInfo.players[players])
+                        }
+                    }
+                }
+            }
+        }
+
+        console.log(JSON.stringify(gameCollection, null, 2));
+
+    }); //end on(join game)
+
     socket.on('create game', function (data) {
-        var gameId = data.gameCode;
-        var uname = data.username;
+        var gameId = data.gameID;
+        var userId = data.userID;
+        var username = dict[userId];
 
-        console.log(uname + " is hosting a game at lobby " + gameId);
+        gameCollection.gameList.lobbyInfo = {};
+        gameCollection.gameList.lobbyInfo.gameCode = gameId;
+        gameCollection.gameList.lobbyInfo.host = username;
+        gameCollection.gameList.lobbyInfo.open = true;
+        gameCollection.gameList.lobbyInfo.players = [username];
 
-        gameCollection.gameList.gameId = gameId;
-        gameCollection.gameList.gameId.host = uname;
-        gameCollection.gameList.gameId.open = true;
         gameCollection.totalGameCount++;
 
-        myEmitter.emit('game created', uname, gameId);
+        //console.log(JSON.stringify(gameCollection, null, 2)); //for debugging
+
+        myEmitter.emit('game created', username, gameId);
     });
 
     socket.on('disconnect', () => {
         console.log("User was disconnected");
-
     });
-
-    //socket.emit('test send to client', 'this was sent from the server'); //for debugging
 
     myEmitter.on('game created', (host, gameID) => {
         console.log(host + " created game: " + gameID);
-
     });
 
 });
