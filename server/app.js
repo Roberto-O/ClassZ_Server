@@ -16,7 +16,7 @@ var gameCode;
 //create a dictionary of uniqueID with username
 var dict = {};
 
-//create game collection that'll hold all games played
+//create game collection that'll hold all games created
 var gameCollection =  new function() {
     this.totalGameCount = 0,
     this.gameList = {}
@@ -31,9 +31,11 @@ io.on('connection', (socket) => {
     socket.on('connect to server', function(userID) {
         console.log(userID + " -> has connected to the server."  );
         dict[userID] = ""; //set userId to null since no username has been set yet
+        //console.log(JSON.stringify(gameCollection, null, 2)); //for debugging
     });
 
     socket.on('generate code', function () {
+        //will generate a code and save it in variable gameCode
         gameCode = (function () {
             var gc = Math.floor(Math.random() * (99999 - 11111 + 1)) + 11111;
             var time = new Date();
@@ -54,6 +56,14 @@ io.on('connection', (socket) => {
         }
 
         console.log("Set id " + id + " to " + username);
+    });
+
+    socket.on('get username', function(data) {
+        var id = data;
+        var username = dict[id];
+
+        console.log(username + " is back")
+        socket.emit('rec username', username);
     });
 
     socket.on('does game exist', function (gameId) {
@@ -105,18 +115,47 @@ io.on('connection', (socket) => {
                         }
                     }
                     if(infoVar == "players"){
-                        gameCollection.gameList.lobbyInfo.players.push([username]);
-                        for(var players in gameCollection.gameList.lobbyInfo.players){
-                            console.log("players in game: " + gameCollection.gameList.lobbyInfo.players[players])
+                        gameCollection.gameList.lobbyInfo.players.push([username]); //add player to player list for that game
+                    }
+                }
+            }
+        }
+
+        //console.log(JSON.stringify(gameCollection, null, 2)); //for debugging
+
+    }); //end on(join game)
+
+    socket.on('get players', function (data) {
+        var gameId = data;
+        var playerName = [];
+
+        for(var key in gameCollection.gameList){
+            if(key == "lobbyInfo"){
+                for(var infoVar in gameCollection.gameList.lobbyInfo){ //loop through the lobby's parameters
+                    if(infoVar == "gameCode"){
+                        var newData = gameCollection.gameList.lobbyInfo.gameCode;
+                        if(newData == gameId){ //compare current gameCode with gameCode sent from client
+                            continue;
+                        }else{
+                            break;
+                        }
+                    }
+                    if(infoVar == "players"){
+                        for(var players in gameCollection.gameList.lobbyInfo.players){ //print out players in the game
+                            var player = gameCollection.gameList.lobbyInfo.players[players];
+                            console.log("players in " + gameId + ": " + player);
+
+                            if(playerName.indexOf(player) === -1) { //don't add duplicates
+                                playerName.push(player);
+                            }
                         }
                     }
                 }
             }
         }
 
-        console.log(JSON.stringify(gameCollection, null, 2));
-
-    }); //end on(join game)
+        socket.emit('rec players', { playerArr: playerName} );
+    });
 
     socket.on('create game', function (data) {
         var gameId = data.gameID;
@@ -151,7 +190,7 @@ app.use('/generate', function (req, res, next) {
     next();
 }, generate);
 
-app.use('/lobby', function (req, res, next) {
+app.use('/lobby', function (req, res, next) { //might not need
     //req.game_code = gameCode;
     next();
 }, lobby);
