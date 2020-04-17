@@ -129,6 +129,55 @@ io.on('connection', (socket) => {
 
     }); //end on(join game)
 
+    socket.on('get host', function (data) {
+        var gameId = data.gameID;
+        var userId = data.userID;
+        var username = dict[userId];
+        var isHost = false;
+        var hostData;
+
+        for(var key in gameCollection.gameList){
+            if(key == "lobbyInfo"){
+                for(var infoVar in gameCollection.gameList.lobbyInfo){ //loop through the lobby's parameters
+                    if(infoVar == "gameCode"){
+                        var newData = gameCollection.gameList.lobbyInfo.gameCode;
+                        if(newData == gameId){ //compare current gameCode with gameCode sent from client
+                            continue;
+                        }else{
+                            break;
+                        }
+                    }
+                    if(infoVar == "host"){
+                        hostData = gameCollection.gameList.lobbyInfo.host;
+                        if(hostData == username){
+                            isHost = true;
+                            console.log(username + " is host of game " + gameId);
+                        }
+                    }
+                }
+            }
+        }
+
+        if(!isHost){
+            console.log(username + " is not host of game " + gameId);
+            socket.emit('am host', 'false');
+            socket.emit('host name', hostData);
+        }else{
+            socket.emit('am host', 'true');
+        }
+
+    });
+
+    socket.on('link', function (data) {
+        console.log("joined room");
+        socket.join(data);
+    });
+
+    socket.on('start countdown', function (data) {
+        console.log("Countdown!")
+        io.to(data).emit('begin countdown');
+    });
+
     socket.on('get players', function (data) {
         var gameId = data;
         var playerName = [];
