@@ -34,6 +34,10 @@ io.on('connection', (socket) => {
         //console.log(JSON.stringify(gameCollection, null, 2)); //for debugging
     });
 
+    socket.on('test', function(data) {
+        console.log(data);
+    });
+
     socket.on('generate code', function () {
         //will generate a code and save it in variable gameCode
         gameCode = (function () {
@@ -62,7 +66,7 @@ io.on('connection', (socket) => {
         var id = data;
         var username = dict[id];
 
-        console.log(username + " is back")
+        console.log(username + " has joined");
         socket.emit('rec username', username);
     });
 
@@ -143,7 +147,7 @@ io.on('connection', (socket) => {
                     if(infoVar == "players"){
                         for(var players in gameCollection.gameList.lobbyInfo.players){ //print out players in the game
                             var player = gameCollection.gameList.lobbyInfo.players[players];
-                            console.log("players in " + gameId + ": " + player);
+                            //console.log("players in " + gameId + ": " + player); //for debugging
 
                             if(playerName.indexOf(player) === -1) { //don't add duplicates
                                 playerName.push(player);
